@@ -5,15 +5,36 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.tree.ArgumentCommandNode;
+import com.mojang.brigadier.tree.LiteralCommandNode;
+
+import julianusiv.discordwhitelist.config.SimpleConfig;
+import julianusiv.discordwhitelist.data.WhitelistEntry;
+import julianusiv.discordwhitelist.discord.DiscordBot;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
-import net.minecraft.entity.Entity.RemovalReason;
+import net.minecraft.command.EntitySelector;
+import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.command.CommandManager;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 
 public class Whitelist implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("discord-whitelist");
-	private static MinecraftServer serverInstance;
+	public static final SimpleConfig CONFIG = SimpleConfig.of("discord-whitelist").provider((filename) -> {
+		//default config
+		return """
+			discord.token=yourtokenhere
+			discord.guild.id=0
+			""";
+	}).request();
+
+	private static MinecraftServer serverInstance = null;
 
 	@Override
 	public void onInitialize() {
@@ -23,10 +44,17 @@ public class Whitelist implements ModInitializer {
 			serverInstance = mcServer;
 		});
 
-		//register ban command 
+		//register commands
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+			LiteralCommandNode<ServerCommandSource> ban = CommandManager.literal("whiteban").requires(source -> source.hasPermissionLevel(1)).build();
+			ArgumentCommandNode<ServerCommandSource, EntitySelector> player = CommandManager.argument("player", EntityArgumentType.player()).executes(Whitelist::whiteban).build();
+			dispatcher.getRoot().addChild(ban);
+			ban.addChild(player);
+		});
 
 		//Start discord bot
-		//Thread t = new Thread(); t.start();
+		Thread t = new Thread(new DiscordBot()); 
+		t.start();
 
 		LOGGER.info("Discord-Whitelist startup complete!");
 	}
@@ -35,11 +63,27 @@ public class Whitelist implements ModInitializer {
 		return ServerState.getServerState(serverInstance);
 	}
 
-	public static void kickPlayers(List<String> names) {
-		for (String name : names) {
-			ServerPlayerEntity player = serverInstance.getPlayerManager().getPlayer(name);
-
-			player.remove(RemovalReason.valueOf("The hammer has spoken!"));
+	public static void shutdown() {
+		LOGGER.info("Shutting down!");
+		while (serverInstance == null) {
 		}
+		serverInstance.stop(false);
+	}
+
+	public static void kickPlayers(List<WhitelistEntry> users, String message) {
+		for (WhitelistEntry entry : users) {
+			ServerPlayerEntity player = serverInstance.getPlayerManager().getPlayer(entry.getUsername());
+
+			player.networkHandler.disconnect(Text.of(message));
+		}
+	}
+
+	private static int whiteban(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity player = EntityArgumentType.getPlayer(context, "player");
+
+		int banned = getServerState().banUser(player.getUuidAsString(), true);
+
+		context.getSource().getPlayer().sendMessageToClient(Text.of("Successfully banned user, " + banned + " accounts were removed in total due to association with the same discord account."), false);
+		return 1;
 	}
 }
