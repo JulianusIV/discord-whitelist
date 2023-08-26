@@ -1,0 +1,12 @@
+{
+	"required": true,
+	"package": "julianusiv.discordwhitelist.mixin",
+	"compatibilityLevel": "JAVA_17",
+	"server": [
+		"PlayerJoinMixin",
+		"ServerShutdownMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

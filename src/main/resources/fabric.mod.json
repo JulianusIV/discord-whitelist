@@ -1,0 +1,38 @@
+{
+	"schemaVersion": 1,
+	"id": "discord-whitelist",
+	"version": "${version}",
+	"name": "Discord-Whitelist",
+	"description": "Connecting minecraft and discord",
+	"authors": [
+		"julianusiv"
+	],
+	"contact": {
+		"homepage": "https://julianusiv.de/",
+		"sources": "https://github.com/JulianusIV/Discord-Whitelist"
+	},
+	"license": "MIT",
+	"icon": "assets/discord-whitelist/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"julianusiv.discordwhitelist.Whitelist"
+		]
+	},
+	"mixins": [
+		"discord-whitelist.mixins.json",
+		{
+			"config": "discord-whitelist.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.14.22",
+		"minecraft": "~1.20.1",
+		"java": ">=17",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
