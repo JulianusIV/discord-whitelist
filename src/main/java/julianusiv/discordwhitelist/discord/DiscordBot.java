@@ -67,6 +67,9 @@ public class DiscordBot implements EventListener, Runnable {
                     .addCommands(Commands.slash("whitelist", "whitelist your minecraft account(s)")
                         .setGuildOnly(true)
                         .addOption(OptionType.STRING, "username", "Name of the minecraft account", true, false))
+                    .addCommands(Commands.slash("whitelistbedrock", "whitelist your minecraft bedrock account(s)")
+                        .setGuildOnly(true)
+                        .addOption(OptionType.STRING, "username", "Name of the minecraft account", true, false))
                     .addCommands(Commands.slash("whitekick", "Kick someone from the whitelist")
                         .setGuildOnly(true)
                         .setDefaultPermissions(DefaultMemberPermissions.enabledFor(net.dv8tion.jda.api.Permission.KICK_MEMBERS))
@@ -96,7 +99,10 @@ public class DiscordBot implements EventListener, Runnable {
             String commandName = ctx.getName();
             switch (commandName) {
                 case "whitelist":
-                    whitelistCommand(ctx);
+                    whitelistCommand(ctx, false);
+                    break;
+                case "whitelistbedrock":
+                    whitelistCommand(ctx, true);
                     break;
                 case "whitekick":
                     whitekickCommand(ctx);
@@ -126,32 +132,45 @@ public class DiscordBot implements EventListener, Runnable {
             Whitelist.LOGGER.info("API is ready!");
     }
 
-    private void whitelistCommand(SlashCommandInteractionEvent ctx) {
+    private void whitelistCommand(SlashCommandInteractionEvent ctx, boolean bedrock) {
         String username = ctx.getOption("username").getAsString();
         if (Whitelist.getServerState().isWhitelisted(username)) {
             ctx.getHook().sendMessage("That user is already whitelisted!").queue();
             return;
         }
-        UserVerificationResult result = verifyUserName(username);
-        if (!result.isSuccess()) {
-            ctx.getHook().sendMessage("There was an error validating that user.").queue();
-            return;
-        }
-        if (!result.isValid()) {
-            ctx.getHook().sendMessage("Account not found.").queue();
-            return;
+
+        UserVerificationResult result = null;
+        if (!bedrock) {
+            result = verifyUserName(username);
+            if (!result.isSuccess()) {
+                ctx.getHook().sendMessage("There was an error validating that user.").queue();
+                return;
+            }
+            if (!result.isValid()) {
+                ctx.getHook().sendMessage("Account not found.").queue();
+                return;
+            }
         }
 
-        boolean success = Whitelist.getServerState().whitelistUser(
-            result.getEntry().getUsername(), 
-            result.getEntry().getUuid(), 
-            ctx.getMember().getIdLong());
+        boolean success = false;
+        if (bedrock) {
+            success = Whitelist.getServerState().whitelistUser(
+                username, 
+                "", //use empty uuid to identify bedrock players, gotta find something better here
+                ctx.getMember().getIdLong());
+        }
+        else {
+            success = Whitelist.getServerState().whitelistUser(
+                result.getEntry().getUsername(), 
+                result.getEntry().getUuid(), 
+                ctx.getMember().getIdLong());
+        }
 
         if (!success){
             ctx.getHook().sendMessage("You are banned from using this command!").queue();
             return;
         }
-        ctx.getHook().sendMessage("Whitelist entry added.").queue();
+        ctx.getHook().sendMessage("Whitelist entry added." + (bedrock ? "\nYou are using a bedrock account, which means your username doesnt get verified. Hope you typed it correcrly." : "")).queue();
     }
 
     private void whitekickCommand(SlashCommandInteractionEvent ctx) {

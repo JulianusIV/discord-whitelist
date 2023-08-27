@@ -127,6 +127,8 @@ public class ServerState extends PersistentState {
         for (WhitelistEntry entry : whitelist) {
             if (entry.getUsername().equals(username))
                 return true;
+            if (entry.getUuid().isEmpty() && ('.' + entry.getUsername()).equals(username))
+                return true;
         }
         return false;
     }
