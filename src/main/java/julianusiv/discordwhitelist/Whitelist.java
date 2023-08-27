@@ -63,6 +63,14 @@ public class Whitelist implements ModInitializer {
 		return ServerState.getServerState(serverInstance);
 	}
 
+	public static int getPlayerCount() {
+		return serverInstance.getCurrentPlayerCount();
+	}
+
+	public static String[] getOnlinePlayers() {
+		return serverInstance.getPlayerNames();
+	}
+
 	public static void shutdown() {
 		LOGGER.info("Shutting down!");
 		while (serverInstance == null) {

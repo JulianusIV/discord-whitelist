@@ -25,6 +25,7 @@ import net.dv8tion.jda.api.hooks.EventListener;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 
 public class DiscordBot implements EventListener, Runnable {
@@ -78,6 +79,10 @@ public class DiscordBot implements EventListener, Runnable {
                         .setGuildOnly(true)
                         .setDefaultPermissions(DefaultMemberPermissions.enabledFor(net.dv8tion.jda.api.Permission.KICK_MEMBERS))
                         .addOption(OptionType.USER, "member", "Member to unban", true, false))
+                    .addCommands(Commands.slash("online", "check who is online")
+                        .setGuildOnly(true)
+                        .addSubcommands(new SubcommandData("count", "Count online players"))
+                        .addSubcommands(new SubcommandData("who", "Get a list of all currently online players")))
                     .queue();
                 Whitelist.LOGGER.info("\t\tSet up slash commands for this guild");
             }
@@ -88,21 +93,33 @@ public class DiscordBot implements EventListener, Runnable {
     public void onEvent(GenericEvent event) {
         if (event instanceof SlashCommandInteractionEvent ctx) {
             ctx.deferReply().queue();
-            if (ctx.getName().equals("whitelist")) { 
-                whitelistCommand(ctx);
-                return;
-            }
-            if (ctx.getName().equals("whitekick")) { 
-                whitekickCommand(ctx);
-                return;
-            }
-            if (ctx.getName().equals("whiteban")) {
-                whitebanCommand(ctx);
-                return;
-            }
-            if (ctx.getName().equals("unban")) { 
-                unbanCommand(ctx);
-                return;
+            String commandName = ctx.getName();
+            switch (commandName) {
+                case "whitelist":
+                    whitelistCommand(ctx);
+                    break;
+                case "whitekick":
+                    whitekickCommand(ctx);
+                    break;
+                case "whiteban":
+                    whitebanCommand(ctx);
+                    break;
+                case "unban":
+                    unbanCommand(ctx);
+                    break;
+                case "online":
+                    String subCmdName = ctx.getSubcommandName();
+                    if (subCmdName.equals("count")){
+                        onlineCountCommand(ctx);
+                        break;
+                    }
+                    if (subCmdName.equals("who")) {
+                        onlineWhoCommand(ctx);
+                        break;
+                    }
+                    break;
+                default:
+                    break;
             }
         }
         if (event instanceof ReadyEvent)
@@ -153,6 +170,27 @@ public class DiscordBot implements EventListener, Runnable {
         Member member = ctx.getOption("member").getAsMember();
         Whitelist.getServerState().unbanUser(member.getIdLong());
         ctx.getHook().sendMessage("Sucessfully unbanned user " + member.getAsMention()).queue();
+    }
+
+    private void onlineCountCommand(SlashCommandInteractionEvent ctx) {
+        int players = Whitelist.getPlayerCount();
+        ctx.getHook().sendMessage("There are currently " + players + " players on the server.").queue();
+    }
+
+    private void onlineWhoCommand(SlashCommandInteractionEvent ctx) {
+        String[] players = Whitelist.getOnlinePlayers();
+        if (players.length == 0) {
+            ctx.getHook().sendMessage("No players currently online.").queue();
+            return;
+        }
+        StringBuilder playerlist = new StringBuilder("These players are currently online:\n");
+        for (int i = 0; i < players.length; i++) {
+            playerlist.append(i)
+                .append(". ")
+                .append(players[i])
+                .append('\n');
+        }
+        ctx.getHook().sendMessage(playerlist.toString()).queue();
     }
 
     private UserVerificationResult verifyUserName(String username){
