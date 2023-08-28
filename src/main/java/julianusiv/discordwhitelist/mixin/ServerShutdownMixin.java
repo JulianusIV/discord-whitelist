@@ -14,8 +14,11 @@ import net.minecraft.server.MinecraftServer;
 public class ServerShutdownMixin {
     @Inject(at = @At("HEAD"), method = "shutdown")
     private void beforeServerShutdown(CallbackInfo info) {
+        Whitelist.announceServerShutdown();
+
         if (DiscordBot.jda != null) {
             Whitelist.LOGGER.info("Shutting down discord bot.");
+            DiscordBot.publishStartStop("Server shutting down!");
             DiscordBot.jda.getPresence().setStatus(OnlineStatus.OFFLINE);
             DiscordBot.jda.shutdown();
             Whitelist.LOGGER.info("Discord-Whitelist shutdown complete.");

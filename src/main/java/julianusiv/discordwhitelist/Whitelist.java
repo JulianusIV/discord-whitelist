@@ -1,6 +1,7 @@
 package julianusiv.discordwhitelist;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,7 @@ import julianusiv.discordwhitelist.discord.DiscordBot;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
+import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.minecraft.command.EntitySelector;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.server.MinecraftServer;
@@ -31,6 +33,8 @@ public class Whitelist implements ModInitializer {
 		return """
 			discord.token=yourtokenhere
 			discord.guild.id=0
+			# discord.guild.chatchannel=0
+			# discord.guild.chatthread=0
 			""";
 	}).request();
 
@@ -40,8 +44,19 @@ public class Whitelist implements ModInitializer {
 	public void onInitialize() {
 		LOGGER.info("Starting up Discord-Whitelist mod!");
 
+		//register events
 		ServerWorldEvents.LOAD.register((mcServer, serverWorld) -> {
 			serverInstance = mcServer;
+			DiscordBot.publishStartStop("Server started.");
+		});
+		ServerMessageEvents.CHAT_MESSAGE.register((message, player, params) -> {
+			DiscordBot.publishChatMessage(message, player);
+		});
+		ServerMessageEvents.COMMAND_MESSAGE.register((message, source, params) -> {
+			DiscordBot.publishCommandMessage(message, params);
+		});
+		ServerMessageEvents.GAME_MESSAGE.register((server, text, overlay) -> {
+			DiscordBot.publishGameMessage(text);
 		});
 
 		//register commands
@@ -61,6 +76,15 @@ public class Whitelist implements ModInitializer {
 
 	public static ServerState getServerState() {
 		return ServerState.getServerState(serverInstance);
+	}
+
+	public static void announceServerShutdown() {
+		serverInstance.getPlayerManager().broadcast(Text.of("Server is shutting down in 10 seconds."), false);
+		try {
+			TimeUnit.SECONDS.sleep(10);
+		} catch (InterruptedException e) {
+		}
+		serverInstance.getPlayerManager().disconnectAllPlayers();
 	}
 
 	public static int getPlayerCount() {
