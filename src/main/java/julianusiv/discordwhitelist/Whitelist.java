@@ -40,6 +40,7 @@ public class Whitelist implements ModInitializer {
 	}).request();
 
 	private static MinecraftServer serverInstance = null;
+	private static boolean sentStartupMessage = false;
 
 	@Override
 	public void onInitialize() {
@@ -48,7 +49,10 @@ public class Whitelist implements ModInitializer {
 		//register events
 		ServerWorldEvents.LOAD.register((mcServer, serverWorld) -> {
 			serverInstance = mcServer;
-			DiscordBot.publishStartStop("Server started.");
+			if (!sentStartupMessage) {
+				DiscordBot.publishStartStop("Server started.");
+				sentStartupMessage = true;
+			}
 		});
 		ServerMessageEvents.CHAT_MESSAGE.register((message, player, params) -> {
 			DiscordBot.publishChatMessage(message, player);
@@ -82,7 +86,6 @@ public class Whitelist implements ModInitializer {
 
 	public static void announceServerShutdown() {
 		serverInstance.getPlayerManager().broadcast(Text.of("Server is shutting down in 10 seconds."), false);
-		DiscordBot.publishGameMessage(Text.of("Server is shutting down in 10 seconds."));
 		try {
 			TimeUnit.SECONDS.sleep(10);
 		} catch (InterruptedException e) {
