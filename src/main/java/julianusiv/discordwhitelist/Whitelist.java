@@ -25,6 +25,7 @@ import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import net.minecraft.text.TranslatableTextContent;
 
 public class Whitelist implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("discord-whitelist");
@@ -56,7 +57,8 @@ public class Whitelist implements ModInitializer {
 			DiscordBot.publishCommandMessage(message, params);
 		});
 		ServerMessageEvents.GAME_MESSAGE.register((server, text, overlay) -> {
-			DiscordBot.publishGameMessage(text);
+			if (text.getContent() instanceof TranslatableTextContent)
+				DiscordBot.publishGameMessage(text);
 		});
 
 		//register commands
@@ -80,6 +82,7 @@ public class Whitelist implements ModInitializer {
 
 	public static void announceServerShutdown() {
 		serverInstance.getPlayerManager().broadcast(Text.of("Server is shutting down in 10 seconds."), false);
+		DiscordBot.publishGameMessage(Text.of("Server is shutting down in 10 seconds."));
 		try {
 			TimeUnit.SECONDS.sleep(10);
 		} catch (InterruptedException e) {
@@ -93,6 +96,10 @@ public class Whitelist implements ModInitializer {
 
 	public static String[] getOnlinePlayers() {
 		return serverInstance.getPlayerNames();
+	}
+
+	public static void forwardMessage(String message) {
+		serverInstance.getPlayerManager().broadcast(Text.of(message), false);
 	}
 
 	public static void shutdown() {

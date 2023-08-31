@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Collection;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonStreamParser;
@@ -24,12 +25,14 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.EventListener;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
+import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
@@ -111,7 +114,14 @@ public class DiscordBot implements EventListener, Runnable {
             Whitelist.shutdown();
             return;
         }
-        jda = JDABuilder.createDefault(token)
+        long chatChannel = Whitelist.CONFIG.getOrDefault("discord.guild.chatchannel", 0);
+        long chatThread = Whitelist.CONFIG.getOrDefault("discord.guild.chatthread", 0);
+
+        Collection<GatewayIntent> intents = GatewayIntent.getIntents(GatewayIntent.DEFAULT);
+        if (chatChannel != 0 || chatThread != 0)
+            intents.add(GatewayIntent.MESSAGE_CONTENT);
+
+        jda = JDABuilder.createLight(token, intents)
                 .setMemberCachePolicy(MemberCachePolicy.DEFAULT)
                 .addEventListeners(this).build();
 
@@ -164,8 +174,7 @@ public class DiscordBot implements EventListener, Runnable {
                                         new SubcommandData("who", "Get a list of all currently online players")))
                         .queue();
                 Whitelist.LOGGER.info("\t\tSet up slash commands for this guild");
-                long chatChannel = Whitelist.CONFIG.getOrDefault("discord.guild.chatchannel", 0);
-                long chatThread = Whitelist.CONFIG.getOrDefault("discord.guild.chatthread", 0);
+                
                 if (chatChannel != 0)
                     DiscordBot.chatChannel = x.getChannelById(TextChannel.class, chatChannel);
                 if (chatThread != 0)
@@ -210,8 +219,15 @@ public class DiscordBot implements EventListener, Runnable {
                     break;
             }
         }
-        if (event instanceof ReadyEvent)
+        if (event instanceof ReadyEvent){
             Whitelist.LOGGER.info("API is ready!");
+            return;
+        }
+
+        if (event instanceof MessageReceivedEvent ctx) {
+            messageReceivedEventHandler(ctx);
+            return;
+        }
     }
 
     private void whitelistCommand(SlashCommandInteractionEvent ctx, boolean bedrock) {
@@ -295,6 +311,21 @@ public class DiscordBot implements EventListener, Runnable {
                     .append('\n');
         }
         ctx.getHook().sendMessage(playerlist.toString()).queue();
+    }
+
+    private void messageReceivedEventHandler(MessageReceivedEvent ctx) {
+        if (ctx.getAuthor().isBot())
+            return;
+        
+        long channelId = ctx.getChannel().getIdLong();
+        if (channelId != chatChannel.getIdLong() && channelId != chatThread.getIdLong())
+            return;
+        
+        StringBuilder builder = new StringBuilder(ctx.getAuthor().getEffectiveName());
+        builder.append(": ");
+        builder.append(ctx.getMessage().getContentDisplay());
+
+        Whitelist.forwardMessage(builder.toString());
     }
 
     private UserVerificationResult verifyUserName(String username) {
