@@ -318,7 +318,11 @@ public class DiscordBot implements EventListener, Runnable {
             return;
         
         long channelId = ctx.getChannel().getIdLong();
-        if ((chatChannel != null && channelId != chatChannel.getIdLong()) && (chatThread != null && channelId != chatThread.getIdLong()))
+        if (chatChannel == null && chatThread == null)
+            return;
+        if (chatChannel == null && chatThread.getIdLong() != channelId)
+            return;
+        if (chatThread == null && chatChannel.getIdLong() != channelId)
             return;
         
         StringBuilder builder = new StringBuilder(ctx.getAuthor().getEffectiveName());
