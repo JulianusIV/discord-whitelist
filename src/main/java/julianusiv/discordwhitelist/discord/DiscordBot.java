@@ -6,7 +6,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+
+import org.apache.logging.log4j.core.pattern.AbstractStyleNameConverter.White;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonStreamParser;
@@ -21,6 +25,7 @@ import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 import net.dv8tion.jda.api.events.GenericEvent;
@@ -29,6 +34,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.EventListener;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
@@ -48,12 +54,12 @@ public class DiscordBot implements EventListener, Runnable {
 
     public static void publishChatMessage(SignedMessage message, ServerPlayerEntity player) {
         MessageCreateData dcMessage = new MessageCreateBuilder()
-            .addEmbeds(new EmbedBuilder()
-                .setAuthor(player.getName().getString())
-                .setDescription(message.getSignedContent())
-                .setColor(Color.GREEN)
-                .build())
-            .build();
+                .addEmbeds(new EmbedBuilder()
+                        .setAuthor(player.getName().getString())
+                        .setDescription(message.getSignedContent())
+                        .setColor(Color.GREEN)
+                        .build())
+                .build();
 
         if (chatChannel != null)
             chatChannel.sendMessage(dcMessage).queue();
@@ -63,11 +69,11 @@ public class DiscordBot implements EventListener, Runnable {
 
     public static void publishCommandMessage(SignedMessage message, Parameters params) {
         MessageCreateData dcMessage = new MessageCreateBuilder()
-            .addEmbeds(new EmbedBuilder()
-                .setDescription(params.applyChatDecoration(message.getContent()).getString())
-                .setColor(Color.GREEN)
-                .build())
-            .build();
+                .addEmbeds(new EmbedBuilder()
+                        .setDescription(params.applyChatDecoration(message.getContent()).getString())
+                        .setColor(Color.GREEN)
+                        .build())
+                .build();
 
         if (chatChannel != null)
             chatChannel.sendMessage(dcMessage).queue();
@@ -77,12 +83,12 @@ public class DiscordBot implements EventListener, Runnable {
 
     public static void publishGameMessage(Text text) {
         MessageCreateData dcMessage = new MessageCreateBuilder()
-            .addEmbeds(new EmbedBuilder()
-                .setAuthor("Server", "https://lathcraft.julianusiv.de", jda.getSelfUser().getAvatarUrl())
-                .setDescription(text.getString())
-                .setColor(Color.GREEN)
-                .build())
-            .build();
+                .addEmbeds(new EmbedBuilder()
+                        .setAuthor("Server", "https://lathcraft.julianusiv.de", jda.getSelfUser().getAvatarUrl())
+                        .setDescription(text.getString())
+                        .setColor(Color.GREEN)
+                        .build())
+                .build();
 
         if (chatChannel != null)
             chatChannel.sendMessage(dcMessage).queue();
@@ -92,12 +98,12 @@ public class DiscordBot implements EventListener, Runnable {
 
     public static void publishStartStop(String message) {
         MessageCreateData dcMessage = new MessageCreateBuilder()
-            .addEmbeds(new EmbedBuilder()
-                .setAuthor("Server", "https://lathcraft.julianusiv.de", jda.getSelfUser().getAvatarUrl())
-                .setDescription(message)
-                .setColor(Color.GREEN)
-                .build())
-            .build();
+                .addEmbeds(new EmbedBuilder()
+                        .setAuthor("Server", "https://lathcraft.julianusiv.de", jda.getSelfUser().getAvatarUrl())
+                        .setDescription(message)
+                        .setColor(Color.GREEN)
+                        .build())
+                .build();
 
         if (chatChannel != null)
             chatChannel.sendMessage(dcMessage).queue();
@@ -145,36 +151,39 @@ public class DiscordBot implements EventListener, Runnable {
             Whitelist.LOGGER.info("\tin Guild: " + x.getIdLong() + " | " + x.getName() + " / " + x.getOwnerIdLong());
             if (x.getIdLong() == guildId) {
                 x.updateCommands()
-                        .addCommands(Commands.slash("whitelist", "whitelist your minecraft account(s)")
-                                .setGuildOnly(true)
-                                .addOption(OptionType.STRING, "username", "Name of the minecraft account", true, false))
-                        .addCommands(Commands.slash("whitelistbedrock", "whitelist your minecraft bedrock account(s)")
-                                .setGuildOnly(true)
-                                .addOption(OptionType.STRING, "username", "Name of the minecraft account", true, false))
-                        .addCommands(Commands.slash("whitekick", "Kick someone from the whitelist")
-                                .setGuildOnly(true)
-                                .setDefaultPermissions(DefaultMemberPermissions
-                                        .enabledFor(net.dv8tion.jda.api.Permission.KICK_MEMBERS))
-                                .addOption(OptionType.USER, "member", "Member to whiteban", true, false))
-                        .addCommands(Commands.slash("whiteban",
-                                "Ban someone from whitelisting accounts, and remove all their current accounts from the whitelist")
-                                .setGuildOnly(true)
-                                .setDefaultPermissions(DefaultMemberPermissions
-                                        .enabledFor(net.dv8tion.jda.api.Permission.KICK_MEMBERS))
-                                .addOption(OptionType.USER, "member", "Member to whiteban", true, false))
-                        .addCommands(Commands.slash("unban", "Unban someone from whitelisting accounts")
-                                .setGuildOnly(true)
-                                .setDefaultPermissions(DefaultMemberPermissions
-                                        .enabledFor(net.dv8tion.jda.api.Permission.KICK_MEMBERS))
-                                .addOption(OptionType.USER, "member", "Member to unban", true, false))
-                        .addCommands(Commands.slash("online", "check who is online")
-                                .setGuildOnly(true)
-                                .addSubcommands(new SubcommandData("count", "Count online players"))
-                                .addSubcommands(
-                                        new SubcommandData("who", "Get a list of all currently online players")))
-                        .queue();
+                    .addCommands(Commands.slash("whitelist", "whitelist your minecraft account(s)")
+                        .setGuildOnly(true)
+                        .addOption(OptionType.STRING, "username", "Name of the minecraft account", true, false))
+                    .addCommands(Commands.slash("whitelistbedrock", "whitelist your minecraft bedrock account(s)")
+                        .setGuildOnly(true)
+                        .addOption(OptionType.STRING, "username", "Name of the minecraft account", true, false))
+                    .addCommands(Commands.slash("whitekick", "Kick someone from the whitelist")
+                        .setGuildOnly(true)
+                        .setDefaultPermissions(DefaultMemberPermissions
+                            .enabledFor(net.dv8tion.jda.api.Permission.KICK_MEMBERS))
+                        .addOption(OptionType.USER, "member", "Member to whiteban", true, false))
+                    .addCommands(Commands.slash("whiteban", "Ban someone from whitelisting accounts, and remove all their current accounts from the whitelist")
+                        .setGuildOnly(true)
+                        .setDefaultPermissions(DefaultMemberPermissions
+                            .enabledFor(net.dv8tion.jda.api.Permission.KICK_MEMBERS))
+                        .addOption(OptionType.USER, "member", "Member to whiteban", true, false))
+                    .addCommands(Commands.slash("unban", "Unban someone from whitelisting accounts")
+                        .setGuildOnly(true)
+                        .setDefaultPermissions(DefaultMemberPermissions
+                            .enabledFor(net.dv8tion.jda.api.Permission.KICK_MEMBERS))
+                        .addOption(OptionType.USER, "member", "Member to unban", true, false))
+                    .addCommands(Commands.slash("online", "check who is online")
+                        .setGuildOnly(true)
+                        .addSubcommands(new SubcommandData("count", "Count online players"))
+                        .addSubcommands(
+                            new SubcommandData("who", "Get a list of all currently online players")))
+                    .addCommands(Commands.slash("whois", "Check who registered a certain nickname, or what nicknames someone registered")
+                        .setGuildOnly(true)
+                        .addOption(OptionType.STRING, "name", "Ingame name to look up", false, false)
+                        .addOption(OptionType.USER, "member", "Member to look up", false, false))
+                    .queue();
                 Whitelist.LOGGER.info("\t\tSet up slash commands for this guild");
-                
+
                 if (chatChannel != 0)
                     DiscordBot.chatChannel = x.getChannelById(TextChannel.class, chatChannel);
                 if (chatThread != 0)
@@ -215,11 +224,13 @@ public class DiscordBot implements EventListener, Runnable {
                         break;
                     }
                     break;
+                case "whois":
+                    whoisCommand(ctx);
                 default:
                     break;
             }
         }
-        if (event instanceof ReadyEvent){
+        if (event instanceof ReadyEvent) {
             Whitelist.LOGGER.info("API is ready!");
             return;
         }
@@ -306,17 +317,68 @@ public class DiscordBot implements EventListener, Runnable {
         StringBuilder playerlist = new StringBuilder("These players are currently online:\n");
         for (int i = 0; i < players.length; i++) {
             playerlist.append(i)
-                    .append(". ")
-                    .append(players[i])
-                    .append('\n');
+                .append(". ")
+                .append(players[i])
+                .append('\n');
         }
         ctx.getHook().sendMessage(playerlist.toString()).queue();
+    }
+
+    private void whoisCommand(SlashCommandInteractionEvent ctx) {
+        String name = ctx.getOption("name", "", OptionMapping::getAsString);
+        Member member = ctx.getOption("member", null, OptionMapping::getAsMember);
+
+        Collection<MessageEmbed> embeds = new ArrayList<MessageEmbed>();
+
+        if (!name.isEmpty()){
+            long discordId = Whitelist.getServerState().getDiscordId(name);
+            List<String> names = new ArrayList<String>();
+            if (discordId != 0)
+                names = Whitelist.getServerState().getAccosiatedNames(discordId);
+
+            StringBuilder descriptionBuilder = new StringBuilder(names.isEmpty() ? "" : "All names associated with this discord account:\n");
+            for (String value : names) {
+                descriptionBuilder.append("- ");
+                descriptionBuilder.append(value);
+                descriptionBuilder.append("\n");
+            }
+
+            embeds.add(new EmbedBuilder()
+                .setColor(5999410)
+                .setTitle(discordId == 0 ?
+                    ("The name " + name + " is not whitelisted.") :
+                    ("Name " + name + " is associated with " + ctx.getGuild().getMemberById(discordId).getEffectiveName()))
+                .setDescription(descriptionBuilder.toString())
+                .build());
+        }
+        if (member != null) {
+            List<String> names = Whitelist.getServerState().getAccosiatedNames(member.getIdLong());
+
+            StringBuilder descriptionBuilder = new StringBuilder();
+            for (String value : names) {
+                descriptionBuilder.append("- ");
+                descriptionBuilder.append(value);
+                descriptionBuilder.append("\n");
+            }
+
+            if (names.isEmpty())
+                embeds.add(new EmbedBuilder().setColor(5793266).setTitle("The member " + member.getEffectiveName() + " does not have a whitelisted account.").build());
+            else
+                embeds.add(new EmbedBuilder().setColor(5793266).setTitle("The member " + member.getEffectiveName() + " is associated with those accounts:")
+                    .setDescription(descriptionBuilder.toString()).build());
+        }
+
+        if (embeds.isEmpty())
+            embeds.add(new EmbedBuilder().setColor(Color.RED).setTitle("Please supply either an ingame name, or a Discord member!").build());
+
+        MessageCreateBuilder builder = new MessageCreateBuilder().addEmbeds(embeds);
+        ctx.getHook().sendMessage(builder.build()).queue();;
     }
 
     private void messageReceivedEventHandler(MessageReceivedEvent ctx) {
         if (ctx.getAuthor().isBot())
             return;
-        
+
         long channelId = ctx.getChannel().getIdLong();
         if (chatChannel == null && chatThread == null)
             return;
@@ -324,7 +386,7 @@ public class DiscordBot implements EventListener, Runnable {
             return;
         if (chatThread == null && chatChannel.getIdLong() != channelId)
             return;
-        
+
         StringBuilder builder = new StringBuilder(ctx.getAuthor().getEffectiveName());
         builder.append(": ");
         builder.append(ctx.getMessage().getContentDisplay());

@@ -132,4 +132,24 @@ public class ServerState extends PersistentState {
         }
         return false;
     }
+
+    public List<String> getAccosiatedNames(long discordId) {
+        List<String> res = new ArrayList<String>();
+
+        for (WhitelistEntry entry : whitelist) {
+            if (entry.getDiscordId() == discordId)
+                res.add(entry.getUsername());
+        }
+
+        return res;
+    }
+
+    public long getDiscordId(String name) {
+        long discordId = 0;
+        for (WhitelistEntry entry : whitelist) {
+            if (entry.getUsername().equals(name))
+                discordId = entry.getDiscordId();
+        }
+        return discordId;
+    }
 }
